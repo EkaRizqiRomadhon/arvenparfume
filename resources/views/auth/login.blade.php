@@ -125,6 +125,11 @@
         </div>
         <p class="subtitle">Login untuk melanjutkan</p>
 
+        {{-- Session error (misalnya diarahkan dari middleware) --}}
+        @if(session('error'))
+            <div class="alert-box">{{ session('error') }}</div>
+        @endif
+
         {{-- Error dari Laravel (email/password salah) --}}
         @if($errors->any())
             <div class="alert-box">

@@ -16,7 +16,10 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return redirect('/');
+            // Kalau sudah login sebagai admin, langsung ke dashboard admin
+            return Auth::user()->role === 'admin'
+                ? redirect()->route('admin.dashboard')
+                : redirect('/');
         }
         return view('auth.login');
     }
@@ -38,7 +41,12 @@ class AuthController extends Controller
                 ipAddress:   $request->ip(),
             );
 
-            return redirect()->intended('/');
+            // Redirect berdasarkan role
+            if (Auth::user()->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
+            return redirect('/');
         }
 
         return back()

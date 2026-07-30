@@ -8,13 +8,8 @@ use Illuminate\Support\Facades\Log;
 class AuthService
 {
     /**
-     * Catat aktivitas user ke tabel activity_logs.
-     *
-     * @param  int    $userId
-     * @param  string $action       Contoh: 'login', 'logout', 'password_reset'
-     * @param  string $description  Deskripsi aktivitas
-     * @param  string $ipAddress    IP address user
-     * @return void
+     * Catat aktivitas ke activity_logs. Kegagalan tidak menghentikan
+     * alur autentikasi utama.
      */
     public function logActivity(int $userId, string $action, string $description, string $ipAddress): void
     {
@@ -27,8 +22,7 @@ class AuthService
                 'created_at'  => now(),
             ]);
         } catch (\Exception $e) {
-            // Activity logging tidak boleh menghentikan proses autentikasi utama
-            Log::error('AuthService: Gagal mencatat activity log.', [
+            Log::error('AuthService: gagal menulis activity log.', [
                 'error'   => $e->getMessage(),
                 'user_id' => $userId,
                 'action'  => $action,

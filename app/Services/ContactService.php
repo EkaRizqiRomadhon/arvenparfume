@@ -9,15 +9,10 @@ use Illuminate\Support\Facades\Log;
 class ContactService
 {
     /**
-     * Simpan pesan kontak ke database dan kirim notifikasi email ke admin.
-     *
-     * @param  array  $data  Data tervalidasi dari StoreContactRequest
-     * @param  string $ip    IP address pengirim
-     * @return ContactMessage
+     * Simpan pesan kontak dan kirim notifikasi ke admin.
      */
     public function storeAndNotify(array $data, string $ip): ContactMessage
     {
-        // 1. Simpan pesan ke database
         $message = ContactMessage::create([
             'name'       => $data['name'],
             'email'      => $data['email'],
@@ -28,22 +23,22 @@ class ContactService
             'created_at' => now(),
         ]);
 
-        // 2. Kirim notifikasi email ke admin (dengan fallback agar tidak crash)
-        $this->sendAdminNotification($message);
+        // Mail dinonaktifkan sengaja agar form submit tetap instan.
+        // Aktifkan kembali via queued job setelah driver mail dikonfigurasi.
+        // $this->sendAdminNotification($message);
 
         return $message;
     }
 
     /**
-     * Kirim email notifikasi ke admin parfum.
-     * Jika gagal (misal: konfigurasi mail belum diset), log error saja.
+     * Kirim email notifikasi teks ke admin. Kegagalan dicatat ke log
+     * tanpa menghentikan alur utama.
      */
     private function sendAdminNotification(ContactMessage $message): void
     {
         $adminEmail = config('mail.admin_email', config('mail.from.address'));
 
         if (blank($adminEmail) || $adminEmail === 'hello@example.com') {
-            // Jangan kirim jika email admin belum dikonfigurasi
             return;
         }
 
@@ -52,7 +47,7 @@ class ContactService
                 "Pesan baru dari: {$message->name} <{$message->email}>\n\n" .
                 "Subjek: {$message->subject}\n\n" .
                 "Pesan:\n{$message->message}\n\n" .
-                "Dikirim dari IP: {$message->ip_address}",
+                "IP: {$message->ip_address}",
                 function ($mail) use ($message, $adminEmail) {
                     $mail->to($adminEmail)
                          ->subject("[Arven Parfum] Pesan Baru: {$message->subject}")
@@ -60,8 +55,7 @@ class ContactService
                 }
             );
         } catch (\Exception $e) {
-            // Catat error tapi jangan hentikan proses utama
-            Log::error('ContactService: Gagal mengirim notifikasi email admin.', [
+            Log::error('ContactService: mail delivery failed.', [
                 'error'      => $e->getMessage(),
                 'message_id' => $message->id,
             ]);

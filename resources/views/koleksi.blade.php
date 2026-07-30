@@ -8,53 +8,22 @@
     <h1>PILIH BRAND PARFUM</h1>
 
     <div class="brand-grid">
-      <a href="{{ route('brand.show', 'ysl') }}" class="brand-card">
+      @forelse($brands as $brand)
+      <a href="{{ url('/koleksi/' . $brand->slug) }}" class="brand-card">
         <div class="brand-card-inner">
-          <img src="{{ asset('brand/ysl.png') }}" alt="YSL Brand" />
-          <h3>Yves Saint Laurent</h3>
-          <p>Parfum mewah dengan karakter elegan dan sophisticated</p>
+          @if($brand->image)
+            <img src="{{ asset($brand->image) }}" alt="{{ $brand->name }} Brand" />
+          @endif
+          <h3>{{ $brand->name }}</h3>
+          <p>{{ $brand->description }}</p>
+          @if($brand->products_count > 0)
+            <span style="font-size: 12px; color: #a38b5d; display: block; margin-top: 8px;">{{ $brand->products_count }} produk tersedia</span>
+          @endif
         </div>
       </a>
-
-      <a href="{{ route('brand.show', 'dior') }}" class="brand-card">
-        <div class="brand-card-inner">
-          <img src="{{ asset('brand/Dior_Logo.webp') }}" alt="Dior Brand" />
-          <h3>Dior</h3>
-          <p>Keanggunan klasik Prancis dalam setiap aroma</p>
-        </div>
-      </a>
-
-      <a href="{{ route('brand.show', 'chanel') }}" class="brand-card">
-        <div class="brand-card-inner">
-          <img src="{{ asset('brand/chanel.png') }}" alt="Chanel Brand" />
-          <h3>Chanel</h3>
-          <p>Ikonik, timeless, dan penuh dengan kemewahan</p>
-        </div>
-      </a>
-
-      <a href="{{ route('brand.show', 'hmns') }}" class="brand-card">
-        <div class="brand-card-inner">
-          <img src="{{ asset('brand/HMNS.png') }}" alt="HMNS Brand" />
-          <h3>HMNS</h3>
-          <p>Aroma modern yang fresh dan sophisticated</p>
-        </div>
-      </a>
-
-      <a href="{{ route('brand.show', 'mykonos') }}" class="brand-card">
-        <div class="brand-card-inner">
-          <img src="{{ asset('brand/mykonos.jpeg') }}" alt="Mykonos Brand" />
-          <h3>Mykonos</h3>
-          <p>Kesegaran Mediterania dalam setiap semprotan</p>
-        </div>
-      </a>
-
-      <a href="{{ route('brand.show', 'saffnco') }}" class="brand-card">
-        <div class="brand-card-inner">
-          <img src="{{ asset('brand/SAFF N CO.png') }}" alt="Saff & Co Brand" />
-          <h3>Saff &amp; Co</h3>
-          <p>Koleksi parfum eksklusif dengan sentuhan oriental</p>
-        </div>
-      </a>
+      @empty
+      <p style="color: #888; text-align: center; grid-column: 1/-1;">Belum ada brand tersedia.</p>
+      @endforelse
     </div>
   </main>
 

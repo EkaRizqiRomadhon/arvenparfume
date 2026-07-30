@@ -10,29 +10,37 @@
 
     {{-- ── Pesan sukses dari Laravel session ──────────────────────────── --}}
     @if(session('success'))
-      <div class="alert" role="alert"
-        style="background:#d4edda;color:#155724;padding:15px;border-radius:5px;margin-bottom:20px;">
+      <div id="success-alert" class="alert" role="alert"
+        style="background:#d4edda;color:#155724;padding:15px;border-radius:5px;margin-bottom:20px; transition: opacity 0.5s ease-out;">
         {{ session('success') }}
       </div>
+      <script>
+        setTimeout(() => {
+          const alert = document.getElementById('success-alert');
+          if (alert) {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+          }
+        }, 3000);
+      </script>
     @endif
 
-    {{-- ── Error validasi dari Laravel ────────────────────────────────── --}}
     @if($errors->any())
-      <div class="alert" role="alert"
-        style="background:#f8d7da;color:#721c24;padding:15px;border-radius:5px;margin-bottom:20px;">
-        <ul style="margin:0;padding-left:20px">
-          @foreach($errors->all() as $error)
-            <li>{{ $error }}</li>
-          @endforeach
-        </ul>
-      </div>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const firstError = document.querySelector('.field-error');
+          if (firstError) {
+            const inputField = firstError.previousElementSibling;
+            if (inputField) {
+              inputField.focus();
+              inputField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        });
+      </script>
     @endif
 
     <div class="contact-container">
-      {{--
-          Form dikirim ke route 'contact.send' (POST /contact/send).
-          @csrf wajib ada agar Laravel tidak menolak request dengan 419.
-      --}}
       <form action="{{ route('contact.send') }}" method="POST">
         @csrf
         <h2 class="form-title">Formulir Kontak</h2>

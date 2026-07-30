@@ -2,15 +2,14 @@
 
 # 🌸 Arven Parfum
 
-**Platform E-Commerce Parfum Modern Berbasis Laravel**
+**Platform E-Commerce Parfum Modern & Elegan Berbasis Laravel**
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.x-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Vite](https://img.shields.io/badge/Vite-7.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-> Toko parfum online yang elegan dengan pengalaman belanja yang mulus, dilengkapi sistem autentikasi pengguna, keranjang belanja interaktif, dan integrasi pembayaran Midtrans.
+> Toko parfum online eksklusif yang dirancang dengan estetika tinggi, sistem manajemen stok atomik berbasis transaksi database (*Pessimistic Locking*), manajemen keranjang belanja dinamis, autentikasi berbasis sesi aman, dan panel administrasi komprehensif.
 
 </div>
 
@@ -20,13 +19,14 @@
 
 - [Tentang Proyek](#-tentang-proyek)
 - [Fitur Utama](#-fitur-utama)
+- [Arsitektur & Keamanan Backend](#-arsitektur--keamanan-backend)
 - [Tech Stack](#-tech-stack)
 - [Struktur Proyek](#-struktur-proyek)
 - [Persyaratan Sistem](#-persyaratan-sistem)
 - [Instalasi & Setup](#-instalasi--setup)
 - [Konfigurasi Environment](#-konfigurasi-environment)
 - [Menjalankan Aplikasi](#-menjalankan-aplikasi)
-- [Panduan Penggunaan](#-panduan-penggunaan)
+- [Panduan Penggunaan & Route](#-panduan-penggunaan--route)
 - [Kontribusi](#-kontribusi)
 - [Lisensi](#-lisensi)
 
@@ -34,32 +34,48 @@
 
 ## 🎯 Tentang Proyek
 
-**Arven Parfum** adalah aplikasi e-commerce yang dibangun khusus untuk penjualan parfum premium. Platform ini menggabungkan desain antarmuka yang elegan dengan fungsionalitas back-end yang solid, memberikan pengalaman belanja yang menyenangkan bagi pelanggan sekaligus kemudahan pengelolaan bagi administrator.
+**Arven Parfum** adalah platform e-commerce yang berfokus pada penjualan parfum mewah dan eksklusif. Aplikasi ini memadukan desain antarmuka modern yang responsif (*glassmorphism*, *micro-animations*, dan skema warna *luxury gold*) dengan arsitektur backend Laravel yang tangguh, aman, dan efisien.
 
-Proyek ini dibangun sebagai portfolio pengembangan web full-stack menggunakan ekosistem Laravel modern.
+Seluruh produk dan brand dikelola secara dinamis melalui basis data, serta dilindungi oleh mekanisme transaksi transaksi atomik untuk mencegah masalah *overselling* saat terjadi lonjakan pembelian secara bersamaan.
 
 ---
 
 ## ✨ Fitur Utama
 
-### 🛍️ Fitur Pelanggan
-- **Halaman Beranda** — Tampilan produk unggulan dan koleksi terbaru
-- **Katalog Koleksi** — Jelajahi parfum berdasarkan brand/kategori
-- **Keranjang Belanja** — Tambah, ubah jumlah, dan hapus produk secara dinamis (berbasis `localStorage`)
-- **Checkout & Pembayaran** — Proses checkout dengan integrasi Midtrans (mode simulasi tersedia)
-- **Riwayat Pesanan** — Lihat histori transaksi setelah login
-- **Halaman Kontak** — Form pengiriman pesan langsung ke sistem
+### 🛍️ Pengalaman Pengguna & Katalog
+- **Halaman Beranda Interaktif** — Tampilan hero parallax, produk unggulan, dan efek animasi halus.
+- **Katalog Brand Dinamis** — Eksplorasi koleksi berdasarkan brand (Chanel, Dior, HMNS, Mykonos, Saff & Co, YSL).
+- **Verifikasi Stok Real-Time** — Pengecekan ketersediaan stok melalui API sebelum produk ditambahkan ke keranjang.
+- **Keranjang Belanja Dinamis** — Manajemen item berbasis `localStorage` dengan penanganan badge otomatis.
+- **Checkout Atomik** — Transaksi pembayaran aman dengan pemberitahuan notifikasi toast responsif.
+- **Riwayat Pesanan & Profil** — Pantau status pesanan dan perbarui profil pengguna/password.
+- **Formulir Kontak** — Layanan pesan pengunjung langsung terintegrasi dengan backend.
 
-### 🔐 Autentikasi & Keamanan
-- **Registrasi & Login** — Sistem auth lengkap dengan validasi form
-- **Rate Limiting** — Proteksi brute-force (maks 5 percobaan/menit per IP)
-- **Activity Log** — Setiap aksi login, register, dan logout tercatat otomatis
-- **Role-Based Access** — Peran `user` dan `admin` dengan middleware terpisah
-- **Session Security** — Regenerasi token sesi setiap login/logout
+### 🛡️ Panel Admin (CMS)
+- **Dashboard Statistik** — Ringkasan jumlah pesanan, produk, brand, pesan kontak belum dibaca, dan pengguna aktif.
+- **Manajemen Brand & Produk** — CRUD lengkap untuk data brand dan katalog parfum.
+- **Manajemen Pesanan** — Pemantauan transaksi dan pembaruan status pesanan.
+- **Manajemen Pesan Kontak** — Baca dan balas pesan dari pengunjung.
+- **Manajemen Pengguna** — Atur status aktif/nonaktif pengguna serta reset password.
 
-### 🛠️ Panel Admin
-- **Dashboard Admin** — Ringkasan data transaksi dan aktivitas pengguna
-- **Akses Terbatas** — Hanya dapat diakses oleh akun dengan role `admin`
+---
+
+## 🔒 Arsitektur & Keamanan Backend
+
+1. **Pessimistic Database Locking (`lockForUpdate`)**
+   - Mencegah *race condition* dan *overselling* stok ketika beberapa pengguna melakukan checkout pada waktu yang bersamaan.
+   - Menggunakan `DB::beginTransaction()` dan `DB::rollBack()` untuk menjamin integritas data transaksi.
+
+2. **Session Persistence (Database Session Driver)**
+   - Middleware API disesuaikan (`EncryptCookies`, `AddQueuedCookiesToResponse`) untuk menjaga sesi pengguna tetap valid dan aman saat melakukan fetch API latar belakang.
+
+3. **Proteksi & Keamanan**
+   - **Rate Limiting (`throttle:5,1`)** — Melindungi endpoint autentikasi dari serangan *brute-force*.
+   - **Role-Based Access Control (RBAC)** — Proteksi route admin menggunakan `IsAdmin` middleware.
+   - **Log Aktivitas (`ActivityLog`)** — Pencatatan log autentikasi pengguna tanpa mengganggu alur utama.
+
+4. **Clean Code & Professional Documentation**
+   - Kode ditulis dengan prinsip *Clean Code*, tanpa *dead code*, serta didokumentasikan dalam Bahasa Indonesia yang profesional dan teknis.
 
 ---
 
@@ -68,14 +84,12 @@ Proyek ini dibangun sebagai portfolio pengembangan web full-stack menggunakan ek
 | Kategori | Teknologi |
 |---|---|
 | **Framework Backend** | Laravel 12.x |
-| **Bahasa** | PHP 8.2+ |
-| **Frontend CSS** | Tailwind CSS 4.x |
-| **Build Tool** | Vite 7.x |
-| **Database** | SQLite (development) / MySQL (production) |
-| **Payment Gateway** | Midtrans PHP SDK |
-| **Auth** | Laravel Built-in Authentication |
-| **Testing** | PHPUnit 11.x |
-| **Dev Tools** | Laravel Sail, Laravel Pail, Laravel Pint |
+| **Bahasa Utama** | PHP 8.2+ |
+| **Frontend Styling & Scripting** | Vanilla CSS, JavaScript (ES6+), Blade Engine |
+| **Asset Bundler** | Vite 7.x |
+| **Database** | MySQL / SQLite |
+| **Session Driver** | Database Session |
+| **Keamanan Auth** | Laravel Guard & Custom Middleware (`IsAdmin`) |
 
 ---
 
@@ -86,42 +100,52 @@ arven-parfum/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
+│   │   │   ├── Admin/                  # Controller CRUD Admin (Brand, Product, Order, User, Contact)
+│   │   │   ├── AdminController.php      # Dashboard statistik admin
 │   │   │   ├── AuthController.php       # Login, Register, Logout
-│   │   │   ├── CheckoutController.php   # Proses & riwayat checkout
-│   │   │   ├── ContactController.php    # Kirim pesan kontak
-│   │   │   └── AdminController.php      # Dashboard admin
-│   │   └── Middleware/
+│   │   │   ├── CheckoutController.php   # Proses checkout atomik & riwayat pesanan
+│   │   │   ├── ContactController.php    # Penanganan pesan kontak
+│   │   │   └── ProfileController.php    # Pembaruan profil & password
+│   │   ├── Middleware/
+│   │   │   └── IsAdmin.php              # Middleware hak akses admin
+│   │   └── Requests/
+│   │       └── StoreContactRequest.php  # Validasi form kontak
 │   ├── Models/
-│   │   ├── User.php                     # Model pengguna dengan role & activity
-│   │   ├── Checkout.php                 # Model transaksi checkout
-│   │   ├── CheckoutItem.php             # Item detail per transaksi
-│   │   ├── ContactMessage.php           # Pesan dari form kontak
-│   │   └── ActivityLog.php              # Log aktivitas pengguna
+│   │   ├── ActivityLog.php              # Log aktivitas user
+│   │   ├── Brand.php                    # Model brand parfum
+│   │   ├── Checkout.php                 # Transaksi checkout
+│   │   ├── CheckoutItem.php             # Detail item per checkout
+│   │   ├── ContactMessage.php           # Pesan kontak pengunjung
+│   │   ├── Product.php                  # Model produk parfum & stok
+│   │   └── User.php                     # Model pengguna & role
 │   └── Services/
-│       └── AuthService.php              # Service layer untuk auth & logging
+│       ├── AuthService.php              # Logging aktivitas autentikasi
+│       └── ContactService.php           # Penanganan bisnis layanan kontak
+├── bootstrap/
+│   └── app.php                          # Konfigurasi middleware & exception handler
 ├── database/
-│   └── migrations/                      # Semua schema tabel database
-├── public/
-│   ├── css/                             # Stylesheet halaman spesifik
-│   ├── img/                             # Asset gambar produk & UI
-│   └── brand/                           # Asset gambar per brand parfum
+│   ├── migrations/                      # Schema migrasi tabel database
+│   └── seeders/                         # Seeder data brand & produk
 ├── resources/
-│   └── views/                           # Blade templates (halaman & komponen)
+│   ├── css/                             # Stylesheet utama (arven.css)
+│   ├── js/                              # Script frontend (animation.js, cart.js, navbar.js)
+│   └── views/                           # Blade templates & layout
 ├── routes/
-│   └── web.php                          # Definisi semua route aplikasi
-└── vite.config.js                       # Konfigurasi build frontend
+│   ├── api.php                          # Endpoint API stok produk
+│   └── web.php                          # Route aplikasi web & admin
+└── vite.config.js                       # Konfigurasi bundler Vite
 ```
 
 ---
 
 ## ⚙️ Persyaratan Sistem
 
-Pastikan sistem Anda memenuhi persyaratan berikut sebelum instalasi:
+Pastikan perangkat Anda memenuhi persyaratan berikut:
 
-- **PHP** >= 8.2 dengan ekstensi: `pdo`, `pdo_sqlite` (atau `pdo_mysql`), `mbstring`, `openssl`, `tokenizer`, `xml`
+- **PHP** >= 8.2 (ekstensi: `pdo`, `pdo_mysql` / `pdo_sqlite`, `mbstring`, `openssl`, `xml`)
 - **Composer** >= 2.x
 - **Node.js** >= 18.x & **NPM** >= 9.x
-- **Git**
+- **MySQL / MariaDB** (atau SQLite untuk pengembangan lokal)
 
 ---
 
@@ -134,43 +158,34 @@ git clone https://github.com/EkaRizqiRomadhon/arvenparfume.git
 cd arvenparfume
 ```
 
-### 2. Setup Otomatis (Direkomendasikan)
-
-Gunakan script setup yang sudah tersedia:
+### 2. Instal Dependensi PHP & Node.js
 
 ```bash
-composer run setup
-```
-
-Perintah ini akan secara otomatis:
-- Menginstal semua dependensi PHP (`composer install`)
-- Menyalin file `.env.example` → `.env`
-- Membuat application key (`artisan key:generate`)
-- Menjalankan migrasi database (`artisan migrate`)
-- Menginstal dependensi Node.js (`npm install`)
-- Mem-build asset frontend (`npm run build`)
-
-### 3. Setup Manual (Alternatif)
-
-Jika ingin melakukan setup step-by-step:
-
-```bash
-# Instal dependensi PHP
+# Instal paket PHP
 composer install
 
-# Salin file environment
-cp .env.example .env
-
-# Generate application key
-php artisan key:generate
-
-# Jalankan migrasi database
-php artisan migrate
-
-# Instal dependensi Node.js
+# Instal paket Node.js
 npm install
+```
 
-# Build asset frontend
+### 3. Salin & Konfigurasi Environment
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+### 4. Setup Database & Seeder
+
+Sesuaikan pengaturan koneksi database di file `.env`, kemudian jalankan migrasi dan seeder:
+
+```bash
+php artisan migrate --seed
+```
+
+### 5. Build Asset Frontend
+
+```bash
 npm run build
 ```
 
@@ -178,150 +193,107 @@ npm run build
 
 ## 🔧 Konfigurasi Environment
 
-Buka file `.env` dan sesuaikan konfigurasi berikut:
+Contoh konfigurasi file `.env`:
 
 ```env
-# Nama & URL Aplikasi
 APP_NAME="Arven Parfum"
+APP_ENV=local
+APP_KEY=base64:...
+APP_DEBUG=true
 APP_URL=http://localhost:8000
 
-# Database (SQLite untuk development)
-DB_CONNECTION=sqlite
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=arven_parfum
-# DB_USERNAME=root
-# DB_PASSWORD=
+# Konfigurasi Database (Contoh MySQL)
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=arven_parfum
+DB_USERNAME=root
+DB_PASSWORD=
 
-# Midtrans Payment Gateway
-MIDTRANS_SERVER_KEY=your_server_key_here
-MIDTRANS_CLIENT_KEY=your_client_key_here
-MIDTRANS_IS_PRODUCTION=false
+# Session Driver (Wajib menggunakan database untuk persistensi terbaik)
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
 ```
-
-> **Catatan:** Untuk mode development/simulasi, integrasi Midtrans tidak memerlukan API key yang valid. Transaksi akan tersimpan dengan status `simulation`.
 
 ---
 
 ## ▶️ Menjalankan Aplikasi
 
-### Mode Development (Semua Service Sekaligus)
+### Mode Pengembangan (Development)
+
+Jalankan server Laravel di satu terminal:
 
 ```bash
-composer run dev
-```
-
-Perintah ini menjalankan secara paralel:
-- `php artisan serve` — Web server di `http://localhost:8000`
-- `npm run dev` — Vite HMR untuk hot-reload frontend
-- `php artisan queue:listen` — Worker untuk job queue
-- `php artisan pail` — Real-time log viewer
-
-### Mode Produksi
-
-```bash
-npm run build
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
 php artisan serve
 ```
 
----
-
-## 📖 Panduan Penggunaan
-
-### Akses Halaman Utama
-
-| URL | Deskripsi |
-|---|---|
-| `/` | Beranda utama |
-| `/koleksi` | Katalog semua parfum |
-| `/koleksi/{brand}` | Produk per brand (contoh: `/koleksi/hermes`) |
-| `/cart` | Keranjang belanja |
-| `/contact` | Halaman kontak |
-| `/about` | Tentang Arven Parfum |
-
-### Autentikasi
-
-| URL | Deskripsi |
-|---|---|
-| `/register` | Daftar akun baru |
-| `/login` | Masuk ke akun |
-| `/checkout/history` | Riwayat pesanan (perlu login) |
-
-### Panel Admin
-
-| URL | Deskripsi |
-|---|---|
-| `/admin/dashboard` | Dashboard admin (perlu login + role admin) |
-
-### Membuat Akun Admin
+Jika melakukan perubahan pada file CSS/JS di `resources/`, jalankan Vite dev server di terminal terpisah:
 
 ```bash
-php artisan tinker
+npm run dev
 ```
 
-```php
-\App\Models\User::create([
-    'full_name' => 'Administrator',
-    'email'     => 'admin@arvenparfum.com',
-    'password'  => 'password123',
-    'role'      => 'admin',
-    'is_active' => true,
-]);
-```
+Aplikasi dapat diakses melalui browser di: `http://127.0.0.1:8000`
 
 ---
 
-## 🧪 Menjalankan Test
+## 📖 Panduan Penggunaan & Route
 
-```bash
-# Jalankan semua test
-composer run test
+### 🌐 Route Publik
+| Path | Method | Deskripsi |
+|---|---|---|
+| `/` | GET | Beranda utama |
+| `/about` | GET | Halaman tentang Arven Parfum |
+| `/koleksi` | GET | Katalog semua brand |
+| `/koleksi/{brand}` | GET | Halaman produk dinamis per brand (contoh: `/koleksi/chanel`) |
+| `/contact` | GET / POST | Halaman kontak & kirim pesan |
+| `/cart` | GET | Halaman keranjang belanja |
 
-# Atau langsung via artisan
-php artisan test
-```
+### 🔑 Autentikasi & Pengguna
+| Path | Method | Deskripsi |
+|---|---|---|
+| `/login` | GET / POST | Masuk ke akun (Rate limited: 5x/menit) |
+| `/register` | GET / POST | Pendaftaran akun baru |
+| `/logout` | POST | Keluar dari sesi |
+| `/checkout/history` | GET | Riwayat transaksi pengguna (Perlu Login) |
+| `/checkout/process` | POST | Proses transaksi checkout atomik (Perlu Login) |
+| `/profile` | GET / PATCH | Kelola profil pengguna & ubah kata sandi |
+
+### 🛠️ Route Admin (`/admin`)
+| Path | Method | Deskripsi |
+|---|---|---|
+| `/admin/dashboard` | GET | Ringkasan statistik sistem |
+| `/admin/brands` | Resource | Olah data brand parfum |
+| `/admin/products` | Resource | Olah data katalog & stok produk |
+| `/admin/orders` | GET / PATCH | Monitoring pesanan & ubah status |
+| `/admin/contacts` | GET / PATCH | Kelola pesan masuk & balasan |
+| `/admin/users` | GET / PATCH / DELETE | Manajemen akun pengguna & status |
+
+### ⚡ API Endpoint
+| Path | Method | Deskripsi |
+|---|---|---|
+| `/api/stock/{product}` | GET | Ambil sisa stok produk secara real-time |
 
 ---
 
 ## 🤝 Kontribusi
 
-Kontribusi sangat diterima! Berikut langkah-langkahnya:
-
-1. **Fork** repository ini
-2. Buat **branch** fitur baru: `git checkout -b feature/nama-fitur`
-3. **Commit** perubahan: `git commit -m 'feat: tambahkan fitur X'`
-4. **Push** ke branch: `git push origin feature/nama-fitur`
-5. Buat **Pull Request**
-
-### Konvensi Commit
-
-Gunakan format [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: menambahkan fitur baru
-fix: memperbaiki bug
-docs: memperbarui dokumentasi
-style: perubahan format/style kode
-refactor: refactoring kode
-test: menambahkan atau memperbarui test
-```
+1. Fork repository ini
+2. Buat branch fitur baru: `git checkout -b feature/FiturBaru`
+3. Commit perubahan Anda: `git commit -m 'feat: menambahkan fitur baru'`
+4. Push ke branch: `git push origin feature/FiturBaru`
+5. Buat Pull Request
 
 ---
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah [MIT License](https://opensource.org/licenses/MIT).
+Proyek ini dilisensikan di bawah [MIT License](LICENSE).
 
 ---
 
 <div align="center">
 
-Dibuat dengan ❤️ menggunakan **Laravel** & **Tailwind CSS**
-
-**[⬆ Kembali ke Atas](#-arven-parfum)**
+Dibuat dengan ❤️ oleh **Arven Parfum Team**
 
 </div>

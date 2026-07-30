@@ -33,7 +33,7 @@
           <div id="totalText">Rp 0</div>
         </div>
 
-        <button id="checkoutBtn" class="btn btn-primary">Secure Checkout</button>
+        <button id="checkoutBtn" class="btn btn-primary" data-auth="{{ Auth::check() ? 'true' : 'false' }}">Secure Checkout</button>
         <button id="clearBtn" class="btn btn-ghost">Kosongkan Keranjang</button>
       </aside>
     </div>
@@ -104,7 +104,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.snapToken) {
-                alert(`✅ Checkout Berhasil!\nOrder ID: ${data.orderId}\nData telah tersimpan di database.`);
+                alert(`✅ Checkout Berhasil dibuat!`);
                 localStorage.removeItem('arven_cart_v1');
                 window.location.href = '/';
             } else {

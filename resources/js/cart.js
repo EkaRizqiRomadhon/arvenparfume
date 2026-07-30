@@ -1,6 +1,4 @@
-// =========================================
-// CONFIG & UTILS
-// =========================================
+// Config & Utils
 const STORAGE_KEY = 'arven_cart_v1';
 
 // Format Rupiah: Rp 1.000.000
@@ -8,9 +6,7 @@ const currency = (n) => {
   return 'Rp ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-// =========================================
-// DATA MANAGEMENT
-// =========================================
+// Data Management
 function readCart() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -30,37 +26,33 @@ function getCartCount() {
   return readCart().reduce((s, i) => s + (i.qty || 0), 0);
 }
 
-// =========================================
-// ACTIONS (Global Functions for HTML onClick)
-// =========================================
+// Global Actions
 
-// Tambah/Kurang jumlah item
+// Ubah kuantitas
 window.changeQty = function(id, delta) {
   const cart = readCart();
   const idx = cart.findIndex(i => i.id == id);
   if (idx >= 0) {
-    // Min qty 1
+    // Minimal 1
     cart[idx].qty = Math.max(1, (cart[idx].qty || 1) + delta);
     writeCart(cart);
   }
 };
 
-// Hapus item spesifik
+// Hapus item
 window.removeItem = function(id) {
   const cart = readCart().filter(i => i.id != id);
   writeCart(cart);
 };
 
-// Kosongkan seluruh keranjang
+// Kosongkan keranjang
 function clearCart() {
   localStorage.removeItem(STORAGE_KEY);
   renderCart();
   updateBadge();
 }
 
-// =========================================
-// UI UPDATES
-// =========================================
+// UI Updates
 
 function updateBadge() {
   const count = getCartCount();
@@ -82,7 +74,7 @@ function renderCart() {
 
   const cart = readCart();
 
-  // 1. Handle Kosong
+  // 1. Keranjang kosong
   if (!cart.length) {
     container.innerHTML = `
       <div class="empty-state">
@@ -91,15 +83,15 @@ function renderCart() {
         <a href="/koleksi" class="btn btn-primary" style="display:inline-block; width:auto; margin-top:20px; padding:10px 30px;">Belanja Sekarang</a>
       </div>`;
     
-    // Reset Summary
+    // Reset ringkasan
     updateSummary(0);
     return;
   }
 
-  // 2. Render Items
+  // 2. Render item
   container.innerHTML = cart.map(item => {
     const subtotal = item.price * item.qty;
-    // Gunakan escape untuk mencegah XSS jika nama produk aneh
+    // Hindari XSS
     const safeName = item.name.replace(/"/g, '&quot;'); 
 
     return `
@@ -129,13 +121,13 @@ function renderCart() {
     `;
   }).join('');
 
-  // 3. Update Summary
+  // 3. Update ringkasan
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   updateSummary(subtotal);
 }
 
 function updateSummary(subtotal) {
-  const tax = subtotal * 0.0; // Pajak 0% (ubah jika perlu)
+  const tax = subtotal * 0.0; // Pajak 0%
   const total = subtotal + tax;
 
   const elSub = document.getElementById('subtotalText');
@@ -147,9 +139,7 @@ function updateSummary(subtotal) {
   if(elTot) elTot.textContent = currency(total);
 }
 
-// =========================================
-// INITIALIZATION & LISTENERS
-// =========================================
+// Initialization
 
 document.addEventListener('DOMContentLoaded', () => {
   // Render awal
@@ -182,6 +172,18 @@ document.addEventListener('DOMContentLoaded', () => {
   
   if (checkoutBtn && modal) {
     checkoutBtn.addEventListener('click', () => {
+       const isAuth = checkoutBtn.getAttribute('data-auth') === 'true' || window.isLoggedIn;
+       if (!isAuth) {
+           if (typeof window.showToast === 'function') {
+               window.showToast("Silahkan login terlebih dahulu", "error");
+           } else {
+               alert("Silahkan login terlebih dahulu");
+           }
+           // Redirect ke halaman login otomatis
+           window.location.href = '/login';
+           return;
+       }
+
        const cart = readCart();
        if(cart.length === 0) return alert("Keranjang kosong");
        
@@ -210,8 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
       buttons.forEach(btn => btn.style.display = 'none');
       loading.style.display = 'block';
       
-      // ─── KIRIM DATA KE BACKEND API ─────────────────────────────────────────
-      // Mengirim data keranjang ke server agar tersimpan di riwayat belanja (database)
+      // Simpan riwayat pesanan ke database
       fetch('/checkout/process', {
           method: 'POST',
           headers: {
@@ -221,31 +222,58 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           body: JSON.stringify({ cart: cart })
       })
-      .then(response => response.json())
+      .then(response => {
+          if (response.status === 422) {
+              return response.json().then(data => {
+                  // Stok habis dari backend
+                  const msg = data.error || 'Beberapa produk tidak tersedia.';
+                  if (typeof window.showToast === 'function') {
+                      window.showToast(msg, 'error');
+                  } else {
+                      alert(msg);
+                  }
+                  buttons.forEach(btn => btn.style.display = 'flex');
+                  loading.style.display = 'none';
+                  if (modal) modal.style.display = 'none';
+                  throw new Error('out_of_stock'); // stop chain
+              });
+          }
+          return response.json();
+      })
       .then(data => {
+          if (!data) return; // sudah dihandle di atas
           if (data.snapToken) {
-              // Simulasi: Karena ini Arven Pay (Simulasi), kita anggap langsung sukses
-              alert(`✅ Checkout Berhasil!\nOrder ID: ${data.orderId}\n\nPembayaran menggunakan ${method} telah diterima.`);
+              // Simulasi: dianggap sukses
+              if (typeof window.showToast === 'function') {
+                  window.showToast('Pesanan berhasil dibuat', 'success');
+              } else {
+                  alert('✅ Pesanan berhasil dibuat');
+              }
               
               // Kosongkan keranjang & tutup modal
               clearCart();
               if (document.getElementById('paymentModal')) {
                   document.getElementById('paymentModal').style.display = 'none';
               }
-              
-              // Redirect ke beranda setelah berhasil
-              window.location.href = '/';
           } else {
-              alert("Gagal memproses checkout: " + (data.error || "Unknown error"));
-              // Kembalikan tombol jika gagal
+              const errMsg = data.error || 'Gagal memproses checkout';
+              if (typeof window.showToast === 'function') {
+                  window.showToast(errMsg, 'error');
+              } else {
+                  alert(errMsg);
+              }
               buttons.forEach(btn => btn.style.display = 'flex');
               loading.style.display = 'none';
           }
       })
       .catch(error => {
+          if (error.message === 'out_of_stock') return;
           console.error('Error:', error);
-          alert("Terjadi kesalahan saat menghubungi server.");
-          // Kembalikan tombol jika error
+          if (typeof window.showToast === 'function') {
+              window.showToast('Terjadi kesalahan saat menghubungi server.', 'error');
+          } else {
+              alert('Terjadi kesalahan saat menghubungi server.');
+          }
           buttons.forEach(btn => btn.style.display = 'flex');
           loading.style.display = 'none';
       });
@@ -261,18 +289,42 @@ document.addEventListener('DOMContentLoaded', () => {
       cart.push({ id, name, price: parseInt(price), image, qty: 1 });
     }
     writeCart(cart);
-    alert(`${name} telah ditambahkan ke keranjang!`);
+    if (typeof window.showToast === 'function') {
+      window.showToast(`${name} ditambahkan ke keranjang!`, 'success');
+    }
   };
 
   const addToCartBtns = document.querySelectorAll('.add-to-cart');
   addToCartBtns.forEach(btn => {
     btn.addEventListener('click', function() {
-      const id = this.dataset.id;
-      const name = this.dataset.name;
+      const id    = this.dataset.id;
+      const name  = this.dataset.name;
       const price = this.dataset.price;
-      const img = this.dataset.img;
-      
-      window.addToCart(id, name, price, img);
+      const img   = this.dataset.img;
+
+      // Cek stok real-time ke backend sebelum tambah ke keranjang
+      fetch(`/api/stock/${id}`, {
+        headers: { 'Accept': 'application/json' }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.stock <= 0) {
+          if (typeof window.showToast === 'function') {
+            window.showToast('Maaf, produk ini telah habis stoknya!', 'error');
+          }
+          // Disable tombol & update teks
+          this.disabled = true;
+          this.textContent = 'Stok Habis';
+          this.style.opacity = '0.4';
+          this.style.cursor = 'not-allowed';
+          return;
+        }
+        window.addToCart(id, name, price, img);
+      })
+      .catch(() => {
+        // Jika API tidak bisa diakses, tetap izinkan tambah (fallback)
+        window.addToCart(id, name, price, img);
+      });
     });
   });
 });

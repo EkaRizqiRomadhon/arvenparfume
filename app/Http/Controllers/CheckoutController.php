@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Checkout;
 use App\Models\CheckoutItem;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -11,66 +12,78 @@ use Illuminate\Support\Facades\Log;
 
 class CheckoutController extends Controller
 {
-    /**
-     * Menampilkan riwayat belanja pengguna (API).
-     */
-    public function index()
+    public function index(Request $request)
     {
-        if (!auth()->check()) {
-            return response()->json(['error' => 'Silakan login untuk melihat riwayat'], 401);
-        }
-
         $checkouts = Checkout::with('items')
             ->where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($checkouts);
+        return $request->wantsJson()
+            ? response()->json($checkouts)
+            : view('checkout.history', compact('checkouts'));
     }
 
-    /**
-     * Memproses checkout SIMULASI dan menyimpan ke database.
-     * Tidak memerlukan API Key Midtrans.
-     */
     public function process(Request $request)
     {
-        Log::info('Simulated Checkout Started', ['request' => $request->all()]);
-
-        // 1. Persiapkan Data Keranjang
         $cart = $request->input('cart');
-        if (!$cart || count($cart) == 0) {
-            Log::warning('Checkout Failed: Cart is empty');
+
+        if (empty($cart)) {
             return response()->json(['error' => 'Keranjang kosong'], 400);
         }
 
+        $dbItems     = array_filter($cart, fn($item) => is_numeric($item['id']));
+        $orderId     = 'INV-' . strtoupper(Str::random(10));
         $grossAmount = 0;
-        foreach ($cart as $item) {
-            $qty = $item['qty'] ?? ($item['quantity'] ?? 0);
-            $grossAmount += ($item['price'] * $qty);
-        }
 
-        // 2. Setup Order ID
-        $orderId = 'INV-' . strtoupper(Str::random(10));
-        
         DB::beginTransaction();
         try {
-            Log::info('Saving Simulated Checkout to DB', ['order_id' => $orderId]);
-            
-            // 3. Simpan ke database (Riwayat Belanja)
+            // Pessimistic lock — mencegah overselling saat checkout bersamaan.
+            $outOfStock = [];
+            foreach ($dbItems as $item) {
+                $qty     = (int) ($item['qty'] ?? $item['quantity'] ?? 1);
+                $product = Product::lockForUpdate()->find($item['id']);
+
+                if (!$product) continue;
+
+                if ($product->stock <= 0) {
+                    $outOfStock[] = "{$product->name} (stok habis)";
+                } elseif ($product->stock < $qty) {
+                    $outOfStock[] = "{$product->name} (tersisa {$product->stock}, diminta {$qty})";
+                }
+            }
+
+            if (!empty($outOfStock)) {
+                DB::rollBack();
+                return response()->json([
+                    'error'        => 'Beberapa produk tidak tersedia: ' . implode(', ', $outOfStock),
+                    'out_of_stock' => $outOfStock,
+                ], 422);
+            }
+
+            foreach ($cart as $item) {
+                $qty          = (int) ($item['qty'] ?? $item['quantity'] ?? 0);
+                $grossAmount += $item['price'] * $qty;
+
+                if (is_numeric($item['id'])) {
+                    Product::where('id', $item['id'])->decrement('stock', $qty);
+                }
+            }
+
             $checkout = Checkout::create([
-                'user_id'      => auth()->check() ? auth()->id() : null,
+                'user_id'      => auth()->id(),
                 'order_id'     => $orderId,
                 'gross_amount' => $grossAmount,
-                'status'       => 'success', // Langsung success karena simulasi
+                'status'       => 'success',
                 'snap_token'   => 'SIMULATION-' . Str::random(20),
                 'payment_type' => 'simulation',
             ]);
 
             foreach ($cart as $item) {
-                $qty = $item['qty'] ?? ($item['quantity'] ?? 0);
+                $qty = (int) ($item['qty'] ?? $item['quantity'] ?? 0);
                 CheckoutItem::create([
                     'checkout_id' => $checkout->id,
-                    'product_id'  => $item['id'],
+                    'product_id'  => is_numeric($item['id']) ? $item['id'] : null,
                     'name'        => $item['name'],
                     'price'       => $item['price'],
                     'quantity'    => $qty,
@@ -79,24 +92,22 @@ class CheckoutController extends Controller
             }
 
             DB::commit();
-            Log::info('Simulated Checkout Successfully Saved', ['order_id' => $orderId]);
+            Log::info('Checkout success', ['order_id' => $orderId, 'user_id' => auth()->id()]);
 
             return response()->json([
                 'success'   => true,
-                'message'   => 'Pesanan berhasil disimpan (Simulasi)',
+                'message'   => 'Pesanan berhasil dibuat',
                 'orderId'   => $orderId,
-                'snapToken' => $checkout->snap_token // Tetap kembalikan token simulasi agar frontend tidak error
+                'snapToken' => $checkout->snap_token,
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Simulated Checkout Error', ['message' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Checkout failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Terjadi kesalahan saat memproses pesanan.'], 500);
         }
     }
 
-    /**
-     * Notification handler (Tidak digunakan dalam mode simulasi, tapi dibiarkan ada)
-     */
     public function notification(Request $request)
     {
         return response()->json(['status' => 'simulation_mode_active']);

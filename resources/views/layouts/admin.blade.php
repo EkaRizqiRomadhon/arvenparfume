@@ -189,17 +189,25 @@
                 Dashboard
             </a>
             <!-- Tambahkan menu lain di sini ke depannya -->
-            <a href="#" class="nav-item">
+            <a href="{{ route('admin.brands.index') }}" class="nav-item {{ request()->routeIs('admin.brands.*') ? 'active' : '' }}">
+                <span class="nav-icon">🏷️</span>
+                Brand
+            </a>
+            <a href="{{ route('admin.products.index') }}" class="nav-item {{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
                 <span class="nav-icon">📦</span>
                 Produk
             </a>
-            <a href="#" class="nav-item">
+            <a href="{{ route('admin.orders.index') }}" class="nav-item {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
                 <span class="nav-icon">🛒</span>
                 Pesanan
             </a>
-            <a href="#" class="nav-item">
+            <a href="{{ route('admin.contacts.index') }}" class="nav-item {{ request()->routeIs('admin.contacts.*') ? 'active' : '' }}">
+                <span class="nav-icon">📩</span>
+                Pesan Masuk
+            </a>
+            <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                 <span class="nav-icon">👥</span>
-                Pelanggan
+                Kelola User
             </a>
         </nav>
     </aside>
@@ -212,7 +220,7 @@
                 @yield('header-title', 'Dashboard')
             </div>
             <div class="header-user">
-                <div class="user-name">Hello, {{ auth()->user()->full_name ?? 'Admin' }}</div>
+                <div class="user-name">Hello, {{ auth()->check() ? explode(' ', auth()->user()->full_name)[0] : 'Admin' }}</div>
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf
                     <button type="submit" class="logout-btn">Logout</button>
